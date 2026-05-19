@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>A팀 외우기</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    margin: 0;
+    background: #f4f5f7;
+    color: #1f2933;
+    padding: 24px 16px 48px;
+  }
+  header {
+    max-width: 1100px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  h1 { font-size: 20px; margin: 0; }
+  .meta { color: #64748b; font-size: 14px; }
+  .controls { display: flex; gap: 10px; align-items: center; font-size: 13px; color: #475569; }
+  .controls label { cursor: pointer; }
+  .grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+    display: flex;
+    flex-direction: column;
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+  }
+  .card:active { cursor: grabbing; }
+  .card.dragging {
+    opacity: 0.4;
+    transform: scale(0.97);
+  }
+  .card.drop-target {
+    box-shadow: 0 0 0 2px #2563eb, 0 4px 12px rgba(37, 99, 235, 0.2);
+  }
+  .reset-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    font-size: 12px;
+    color: #475569;
+    cursor: pointer;
+  }
+  .reset-btn:hover { background: #f1f5f9; }
+  .photo {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+  .photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .info {
+    padding: 10px 12px 12px;
+    text-align: center;
+  }
+  .name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1f2933;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+  .dept {
+    font-size: 13px;
+    color: #64748b;
+  }
+  .hide-name .name { visibility: hidden; }
+  .hide-dept .dept { visibility: hidden; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>A팀 외우기</h1>
+    <div class="meta" id="count"></div>
+  </div>
+  <div class="controls">
+    <label><input type="checkbox" id="toggle-name" checked> 이름</label>
+    <label><input type="checkbox" id="toggle-dept" checked> 부서</label>
+    <button class="reset-btn" id="reset-order">정렬 초기화</button>
+  </div>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const members = [
+  { name: '고재경', dept: '3PL사업팀',              id: '1aCW3X5FzRAgwq82Gnhhnoz1hmkBZuaTr' },
+  { name: '곽주원', dept: 'LX4팀',                  id: '1HZzVbyggKRTbtbrYcDZkUILE3iw2GMj1' },
+  { name: '김대현', dept: 'LX4팀',                  id: '1cnHjyPCoH7E9sdDADSJLkPnfMpQNydm6' },
+  { name: '김동언', dept: 'MobilePC팀',             id: '199xxLZsIaC2LmP0y5RuCAuAAL3CDJa-L' },
+  { name: '김선우', dept: '서비스개발팀',           id: '1-garKpNf_Am3cN9EIdWN3LD5bUTxWfe4' },
+  { name: '김성원', dept: '사업지원팀',             id: '1JNsgfFKd1_PVMGpJ3FIkiwPg_d0E21IR' },
+  { name: '김예림', dept: 'LX2팀',                  id: '1f8xIOYaN6yVhlcYJkKqcRq85KkmvDMBE' },
+  { name: '김태일', dept: 'Platform Engineering팀', id: '1oM4Z0oiyAYr548VIWrcoWPA5T3DQNpcq' },
+  { name: '김형설', dept: 'CEO',                    id: '1XWLqs25ayVpr-v3IyXZ45b8s10MBK89q' },
+  { name: '박보미', dept: 'CTO직속',                id: '13u55FWF_lLKNTvTr0LQomKeUh6k1wYT3' },
+  { name: '백유라', dept: 'PD팀',                   id: '1SOzU46wS2KfEJzeWrkRx4dg33NwkOGa_' },
+  { name: '손승진', dept: 'LX2팀',                  id: '1G4tvijxYCVkipYlGop1ijV5rbBdUeBEF' },
+  { name: '손지훈', dept: '3PL사업팀',              id: '1u33iDungCiGIeRTQXrHehumukWLJF69R' },
+  { name: '송일호', dept: 'LX1팀',                  id: '1SgkC6cXRdDP39gCFHqYDwfQh268L-rvj' },
+  { name: '신선호', dept: 'LX1팀',                  id: '1Ieu6qwoThZLB8RPXlZfNz1T3dKwrlwc-' },
+  { name: '양수미', dept: '사업기획팀',             id: '1mekbx2qYGyXjDEwzGxHmntSDsvtZkLCd' },
+  { name: '여영은', dept: '빌드업TF팀',             id: '1vKqa-fhPTRjRD7rFJ-whVttzBzoU5HDc' },
+  { name: '염제우', dept: 'LX3팀',                  id: '1CunRooo3IWFNeFajZhvwdhg9cneJZ6zo' },
+  { name: '윤인묵', dept: 'LX1팀',                  id: '19EA99HzdJ-a0YZjvtYq86FCeOE5EGrCh' },
+  { name: '이동규', dept: 'CX운영팀',               id: '1WsB507r0Exbx71TFgcM-9GsZVhHbSiB5' },
+  { name: '이선아', dept: 'PD팀',                   id: '12U5cmv4Yejur4fZUskqc44pTTxFd0o5z' },
+  { name: '이승훈B', dept: '빌드업TF팀',            id: '1wppUG-auJ5jIwGSoB2UB3DVxUJW6truL' },
+  { name: '이영호', dept: '법인영업팀',             id: '1PQ1HYGtGCIfAFaPU-oVFqNYKe7atrDDW' },
+  { name: '이은지', dept: '사업관리팀',             id: '1sxbEUbXlED81cxNbvd2wtpQY7doYEQk3' },
+  { name: '이일건', dept: '사업지원팀',             id: '1DR9WDS54s9JQq4PBEhSEqAKAU1Sf6Y-Z' },
+  { name: '이창민', dept: 'LX2팀',                  id: '1RjC4qjh6nxARUxEQ3k2O-dfX8JqisUNI' },
+  { name: '이현우', dept: 'LX2팀',                  id: '1Pc3BXvkW4BG_bYXPOT22DzzUp0_fQSaT' },
+  { name: '장문정', dept: '사업관리팀',             id: '1wcTo43rme-KXaHGVYkBHcHs9__z2oKQi' },
+  { name: '장혜원', dept: 'LX3팀',                  id: '1WQrYEAmx8lkeWCXvMp9cdCAzmTqAR_ak' },
+  { name: '정지석', dept: '피플실',                 id: '1KrjiKLhLDi4QgsutH6oQA2nJy_cvpuej' },
+  { name: '정찬규', dept: '빌드업TF팀',             id: '1kOew8Cr9Zm9zrmMkPNAvDOcxWyEUOUTj' },
+  { name: '조민준', dept: '핀테크팀',               id: '1_HyilupHg7sMPGyObptFKHZrEBnYscZF' },
+  { name: '조한솔', dept: '법인영업관리팀',         id: '1No1UqhaF18nmeVou6QolqrQeWKmm9PTZ' },
+  { name: '최재성', dept: 'M&S본부',                id: '1ml9d4yiQ5nrufx8NlY3pIO5_9yzlEG24' },
+  { name: '최태건', dept: '신사업TF팀',             id: '1wDVZtQUKdlV7e-Nv9VTnkxPkdmUZp6cv' },
+];
+
+const photoUrl = (id) => `https://lh3.googleusercontent.com/d/${id}=w480`;
+const grid = document.getElementById('grid');
+const count = document.getElementById('count');
+count.textContent = `총 ${members.length}명`;
+
+const DEV = ['Platform Engineering팀', '서비스개발팀', 'MobilePC팀'];
+const BOTTOM = ['CTO직속', 'CEO', '핀테크팀', '신사업TF팀'];
+const STORAGE_KEY = 'a-team-order-v1';
+
+function bucket(dept) {
+  if (BOTTOM.includes(dept)) return 2;
+  if (DEV.includes(dept)) return 1;
+  return 0;
+}
+function tierIndex(dept) {
+  if (BOTTOM.includes(dept)) return BOTTOM.indexOf(dept);
+  if (DEV.includes(dept)) return DEV.indexOf(dept);
+  return 0;
+}
+function defaultOrder() {
+  return members.slice().sort((a, b) => {
+    const ba = bucket(a.dept);
+    const bb = bucket(b.dept);
+    if (ba !== bb) return ba - bb;
+    if (ba === 0) {
+      const d = a.dept.localeCompare(b.dept, 'ko');
+      if (d !== 0) return d;
+    } else {
+      const ta = tierIndex(a.dept);
+      const tb = tierIndex(b.dept);
+      if (ta !== tb) return ta - tb;
+    }
+    return a.name.localeCompare(b.name, 'ko');
+  }).map(m => m.id);
+}
+function loadOrder() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (Array.isArray(saved)) {
+      const known = new Set(members.map(m => m.id));
+      const filtered = saved.filter(id => known.has(id));
+      const missing = members.filter(m => !filtered.includes(m.id)).map(m => m.id);
+      return [...filtered, ...missing];
+    }
+  } catch (e) {}
+  return defaultOrder();
+}
+function saveOrder(order) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+}
+
+const byId = new Map(members.map(m => [m.id, m]));
+let order = loadOrder();
+
+function render() {
+  grid.innerHTML = order.map(id => {
+    const m = byId.get(id);
+    return `
+      <div class="card" draggable="true" data-id="${id}">
+        <div class="photo"><img src="${photoUrl(m.id)}" alt="${m.name}" referrerpolicy="no-referrer" loading="lazy" draggable="false"></div>
+        <div class="info">
+          <div class="name">${m.name}</div>
+          <div class="dept">${m.dept}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  attachDnd();
+}
+
+let dragId = null;
+function attachDnd() {
+  const cards = grid.querySelectorAll('.card');
+  cards.forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      dragId = card.dataset.id;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragId);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      grid.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+      dragId = null;
+    });
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      grid.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+      if (card.dataset.id !== dragId) card.classList.add('drop-target');
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drop-target');
+    });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetId = card.dataset.id;
+      if (!dragId || dragId === targetId) return;
+      const from = order.indexOf(dragId);
+      const to = order.indexOf(targetId);
+      if (from < 0 || to < 0) return;
+      const rect = card.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2 || (e.clientX - rect.left) > rect.width / 2;
+      order.splice(from, 1);
+      let insertAt = order.indexOf(targetId);
+      if (after) insertAt += 1;
+      order.splice(insertAt, 0, dragId);
+      saveOrder(order);
+      render();
+    });
+  });
+}
+
+function applyVisibility() {
+  document.body.classList.toggle('hide-name', !document.getElementById('toggle-name').checked);
+  document.body.classList.toggle('hide-dept', !document.getElementById('toggle-dept').checked);
+}
+
+document.getElementById('toggle-name').onchange = applyVisibility;
+document.getElementById('toggle-dept').onchange = applyVisibility;
+document.getElementById('reset-order').onclick = () => {
+  order = defaultOrder();
+  saveOrder(order);
+  render();
+};
+
+render();
+applyVisibility();
+</script>
+</body>
+</html>
